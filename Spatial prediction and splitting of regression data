@@ -1,3 +1,5 @@
+#This code is adapted for r
+
 library(raster) #Calls the raster function for use in the data analysis of raster layers
 fires.data <- read.csv2("C:/Users/lawre/R/Data/data.csv") #Import the data containing the coordinates and dependent variables and stored in object 'fire.data'
 fires.data <- na.omit(fires.data) #To remove the NAs present in the data
