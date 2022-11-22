@@ -1,5 +1,5 @@
 library(raster) #Calls the raster function for use in the data analysis of raster layers
-fires.data <- read.csv2("C:/Users/lawre/Desktop/Uni Eastern Finland/Introduction to R/Intro to R/Data/fire_logit.csv") #Import the data containing the coordinates and dependent variables and stored in object 'fire.data'
+fires.data <- read.csv2("C:/Users/lawre/R/Data/data.csv") #Import the data containing the coordinates and dependent variables and stored in object 'fire.data'
 fires.data <- na.omit(fires.data) #To remove the NAs present in the data
 tail(fires.data) #To see the last six rows of the 'fires.data' object created and be sure that the NAs are removed
 
@@ -52,6 +52,33 @@ logit.predict <- predict(fires, mod.logit, filename = "fires.tif", type = "respo
 plot(logit.predict, main = "Logistic regression", xlab ="Longitude", ylab = "Latitude",  col = heat.colors(15)) #obtain the plot or pictorial view of the predicted model
 
 
+#UNDERSTANDING SPLITTING OF DATA FOR REGRESSION ANALYSIS
+library(caTools)
+library(tidyverse)
+logit <- read.csv("C:/Users/data.csv",
+                  header = T, sep = ";", dec = ",")
+logit
+mod.logit <- glm(logit_1_0 ~ ., data = logit, family = binomial)
+summary(mod.logit)
+cor(logit)
+#Splitting the data into calculation and validation sets
+library(caTools)
+edit_logit <- logit[, c(-2, -3, -4, -9)]
+edit_logit
+split_edit_logit <- sample.split(edit_logit, SplitRatio = 0.4)
+train_edit_logit <- subset(edit_logit, split_edit_logit == T)
+test_edit_logit <- subset(edit_logit, split_edit_logit == F)
+mod_edit_logit <- glm(logit_1_0 ~ ., data = train_edit_logit, family = binomial)
+summary(mod_edit_logit)
+
+#Alternative splitting
+edit_logit
+no_of_rows <- nrow(edit_logit)
+ratio <- 0.4
+sample.size <- floor(no_of_rows*ratio)
+sample.val <- sample(nrow(edit_logit), size = sample.size)
+validate.logit <- edit_logit[sample.val, ]
+calculate.logit <- edit_logit[-sample.val, ]
 
 
 
