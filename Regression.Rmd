@@ -1,0 +1,555 @@
+---
+title: "Modelling tree volume using Empirical approach"
+author: "Lawrence"
+date: "2022-12-20"
+output: html_document
+---
+
+### Importing data
+````{r}
+library(ggplot2)
+library(ggthemes)
+data <- read.csv( "C:/Users/lawre/Desktop/Uni Eastern Finland/Introduction to R/Intro to R/Methodology exercise/Group4.csv",
+                  header = T, dec = ".")
+head(data)
+````
+
+### Data subsetting
+````{r}
+data_ratio <- data[c(-1,-4, -10, -11)]
+head(data_ratio)
+````
+
+
+### Summary statistics
+````{r}
+#Using a loop to obtain the summary statistics of the data
+print(summary(data_ratio))
+for (items in names(data_ratio)){
+  std <- sd(data_ratio[[items]])
+  len <- length(data_ratio[[items]])
+  item <- list(std)
+  item2 <- list(len)
+  names(item) <- names(data_ratio[items])
+  sentence <- paste("std of", names(data_ratio[items]), "is", std)
+  sentence2 <- paste("Length of", names(data_ratio[items]), "is", len)
+  print(sentence)
+  print(sentence2)
+ }
+````
+
+
+````{r}
+#Using the apply function to create a table of the summary statistics
+data_summary <- data.frame(apply(data_ratio, 2, summary))
+data_sd <- data.frame(apply(data_ratio, 2, sd))
+data_summary <- rbind(data_summary, t(data_sd))
+colnames(data_summary) <- c("Latitude", "Longitude","Age", "Annual precipitation", "Basal area", "Diameter", "Height", "Total volume")
+data_summary <- data_summary[-c(2,3,5),]
+rownames(data_summary) <- c("Minimum", "Mean", "Maximum", "Std")
+write.csv(data_summary, "C:/Users/lawre/Desktop/Uni Eastern Finland/Introduction to R/Intro to R/Methodology exercise/Summary of group4.csv", col.names = T, na = "NA")
+````
+
+
+### Boxplot
+````{r}
+#Extracting each dominant species and soil type
+#Dominant species
+pine_dom <- data[data[4] == 1,]$TOTAL_VOLUME
+spruce_dom <- data[data[4] == 2,]$TOTAL_VOLUME
+others_dom <- data[data[4] == 4,]$TOTAL_VOLUME
+volume_dom <- data.frame(cbind(pine_dom,spruce_dom,others_dom))
+#Forest types
+very_fertile <- data[data[11] == 1,]$TOTAL_VOLUME
+fertile <- data[data[11] == 2,]$TOTAL_VOLUME
+semi_fertile <- data[data[11] == 3,]$TOTAL_VOLUME
+moderate <- data[data[11] == 4,]$TOTAL_VOLUME
+poor <- data[data[11] == 5,]$TOTAL_VOLUME
+very_poor <- data[data[11] == 7,]$TOTAL_VOLUME
+volume_types <- data.frame(cbind(very_fertile, fertile, semi_fertile, moderate, poor, very_poor))
+````
+
+````{r}
+#Boxplot by soil type
+ggplot(data, aes(x = as.factor(FOREST_TYPE), y = TOTAL_VOLUME))+
+  geom_boxplot(color = "black", fill = c(2:7), alpha = 0.7, outlier.shape = 20, outlier.color = "red", outlier.size = 3)+
+  scale_y_continuous(name = expression("Volume (m)"^3),
+                     breaks = seq(0, 600, 100),
+                     limits = c(0, 600))+
+  scale_x_discrete(name = "Forest types",
+                   labels = c("Very fertile", "Fertile","Semi Fertile", "Moderate", "Poor", "Very_poor"))+
+  ggtitle("Boxplot of Forest types")+
+  theme_bw()
+ggsave("Boxplot of Forest types.png", dpi = 400, width = 20, height = 15, units = "cm")
+````
+
+
+`````{r}
+#Boxplot by dominant species
+ggplot(data, aes(x = as.factor(SP_GROUP), y = TOTAL_VOLUME))+
+  geom_boxplot(color = "black", fill = c(2:4), alpha = 0.7, outlier.shape = 20, outlier.color = "red", outlier.size = 3)+
+  scale_y_continuous(name = expression("Volume (m)"^3),
+                     breaks = seq(0, 600, 100),
+                     limits = c(0, 600))+
+  scale_x_discrete(name = "Dominant species",
+                   labels = c("Pine", "Spruce", "Others"))+
+  ggtitle("Boxplot of Dominant species")+
+  theme_bw()
+ggsave("Boxplot of dom species.png", dpi = 400, width = 20, height = 15, units = "cm")
+````
+
+
+### Histogram distribution
+````{r}
+#Total volume distribution
+ggplot(data)+
+  geom_histogram(aes(x=TOTAL_VOLUME, y =..density..),
+                 bins = 30, col = "white", fill = "red")+
+  scale_y_continuous(name = "Density")+
+  stat_function(fun = dnorm, args = list(mean = mean(data$TOTAL_VOLUME), sd = sd(data$TOTAL_VOLUME)), cex=1, color = "steelblue")+
+  ggtitle("Histogram distribution of the total volume")+
+  xlab(expression("Volume (m)"^3))+
+  theme_bw()
+ggsave("Histogram.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+
+#volume distribution of dominant species
+ggplot(data)+
+  geom_histogram(aes(x=TOTAL_VOLUME, y =..density..),
+                 bins = 30, col = "white", fill = "red")+
+  scale_y_continuous(name = "Density")+
+  stat_function(fun = dnorm, args = list(mean = mean(data$TOTAL_VOLUME), sd = sd(data$TOTAL_VOLUME)), cex=1, color = "steelblue")+
+  ggtitle("Histogram distribution of the total volume by species")+
+  xlab(expression("Volume (m)"^3))+
+  facet_wrap(~factor(SP_GROUP), labeller = as_labeller(c("1" = "Pine",
+                                                         "2" = "Spruce",
+                                                         "4" = "Birch and others")))+
+  theme_clean()+
+  theme(strip.background =element_rect(fill="red"))+
+  theme(strip.text = element_text(colour = 'white'))
+ggsave("Histogram.png", dpi = 400, width = 20, height = 15, units = "cm")
+````
+
+
+### Examining the relationship
+````{r}
+#Examining the relationship
+plot(data$AGE, data$TOTAL_VOLUME)
+abline(lm(data$TOTAL_VOLUME ~ data$AGE))
+
+plot(data$D, data$TOTAL_VOLUME)
+abline(lm(data$TOTAL_VOLUME ~ data$D))
+
+plot(data$H, data$TOTAL_VOLUME)
+abline(lm(data$TOTAL_VOLUME ~ data$H))
+
+plot(data$BA, data$TOTAL_VOLUME)
+abline(lm(data$TOTAL_VOLUME ~ data$BA))
+
+plot(data$P0, data$TOTAL_VOLUME)
+abline(lm(data$TOTAL_VOLUME ~ data$P0))
+````
+
+
+### Building models
+````{r}
+
+model1 <- lm(TOTAL_VOLUME ~ H, data = data)
+summary(model1)
+plot(model1$residuals ~ model1$fitted.values)
+abline(h = 0)
+model1$coefficients
+
+model2 <- lm(TOTAL_VOLUME ~ D, data = data)
+summary(model2)
+plot(model2$residuals ~ model2$fitted.values)
+abline(h = 0)
+model2$coefficients
+
+model3 <- lm(TOTAL_VOLUME ~ BA, data = data)
+summary(model3)
+plot(model3$residuals ~ model3$fitted.values)
+abline(h = 0)
+model3$coefficients
+
+model4 <- lm(TOTAL_VOLUME ~ P0, data = data)
+summary(model4)
+plot(model4$residuals ~ model4$fitted.values)
+abline(h = 0)
+model4$coefficients
+````
+
+### Models with transformed data
+````{r}
+BA2 <- data$BA^2
+TOTAL_VOLUME2 <- data$TOTAL_VOLUME^2
+D2 <- data$D^2
+H2 <- data$H^2
+data2 <- data.frame(cbind(data, BA2, TOTAL_VOLUME2, D2, H2))
+BA.D2 <- data2$BA*(data2$D2)
+BA.H2 <- data2$BA*(data2$H2)
+data2 <- data.frame(cbind(data, BA2, TOTAL_VOLUME2, D2, H2, BA.D2, BA.H2))
+head(data2)
+````
+
+### Transformed models
+````{r}
+model5 <- lm(TOTAL_VOLUME ~ BA2, data = data2)
+summary(model5)
+plot(model5$residuals ~ model5$fitted.values)
+abline(h = 0)
+model5$coefficients
+
+
+model6 <- lm(TOTAL_VOLUME2 ~ BA2, data = data2)
+summary(model6)
+plot(model6$residuals ~ model6$fitted.values)
+abline(h = 0)
+model6$coefficients
+
+
+model7 <- lm(TOTAL_VOLUME ~ D2, data = data2)
+summary(model7)
+plot(model7$residuals ~ model7$fitted.values)
+abline(h = 0)
+model7$coefficients
+
+model8 <- lm(TOTAL_VOLUME ~ H2, data = data2)
+summary(model8)
+plot(model8$residuals ~ model8$fitted.values)
+abline(h = 0)
+model8$coefficients
+
+
+model9 <- lm(TOTAL_VOLUME ~ BA.D2, data = data2)
+summary(model9)
+plot(model9$residuals ~ model9$fitted.values)
+abline(h = 0)
+model9$coefficients
+
+model10 <- lm(TOTAL_VOLUME ~ BA.H2, data = data2)
+summary(model10)
+plot(model10$residuals ~ model10$fitted.values)
+abline(h = 0)
+model10$coefficients
+
+model11 <- lm(TOTAL_VOLUME ~ H2 + BA2, data = data2)
+summary(model11)
+plot(model11$residuals ~ model11$fitted.values)
+abline(h = 0)
+model11$coefficients
+````
+
+
+### Selected models
+````{r}
+model11 <- lm(TOTAL_VOLUME ~ H2 + BA2, data = data2)
+summary(model11)
+ggplot(model11)+
+  geom_point(aes(x=model11$fitted.values, y = model11$residuals), color = "black", pch = 21, fill = "red", cex = 1.5)+
+  geom_hline(yintercept = 0, lwd = 0.7)+
+  scale_y_continuous(name = "Residuals",
+                     breaks = seq(-40, 20, 10),
+                     limits = c(-40, 20))+
+  scale_x_continuous(name = "Fitted values")+
+  ggtitle("Residual plot")+
+  theme_test()
+ggsave("Model11.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+model11$coefficients
+
+ggplot(data2)+
+  geom_point(aes(x = H2, y = TOTAL_VOLUME, color = "Height"))+
+  geom_point(aes(x = BA2, y = TOTAL_VOLUME, color = "Basal area"))+
+  scale_color_manual(breaks = c("Height", "Basal area"),
+                     values = c("blue", "red"))+
+  xlab("")+
+  ylab(expression("Total volume (m)"^3))+
+  guides(color = guide_legend(title = "Predictors"))+
+  ggtitle(expression("Volume against predictor variables"))+
+  theme_bw()
+ggsave("Model11_variables.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+#Model against observed
+volume_both3 <- data.frame(cbind(data2$TOTAL_VOLUME, model11$fitted.values))
+colnames(volume_both3) <- c("volume_original", "volume_model")
+head(volume_both3)
+
+ggplot(volume_both3, aes(x = volume_original, y = volume_model))+
+  geom_point(pch = 21, color = "black", fill = "red")+
+  geom_smooth(method=lm)+
+  xlab(expression("Original volume (m)"^3))+
+  ylab(expression("Modelled volume (m)"^3))+
+  ggtitle(expression("Measured against the modelled volume"))+
+  theme_bw()
+ggsave("Model11_volumes.png", dpi = 400, width = 20, height = 15, units = "cm")
+````
+
+
+
+````{r}
+model10 <- lm(TOTAL_VOLUME ~ BA.H2, data = data2)
+summary(model10)
+ggplot(model10)+
+  geom_point(aes(x=model10$fitted.values, y = model10$residuals), color = "black", pch = 21, fill = "red", cex = 1.5)+
+  geom_hline(yintercept = 0, lwd = 0.7)+
+  scale_y_continuous(name = "Residuals",
+                     breaks = seq(-120, 60, 20),
+                     limits = c(-120, 60))+
+  scale_x_continuous(name = "Fitted values")+
+  ggtitle("Residual plot")+
+  theme_test()
+ggsave("Model10.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+model10$coefficients
+
+ggplot(data2, aes(x = BA.H2, y = TOTAL_VOLUME))+
+  geom_point(color = "red")+
+  geom_smooth(method=lm)+
+  xlab("Basal area x Height")+
+  ylab(expression("Total volume (m)"^3))+
+  ggtitle(expression("Volume against predictor variable"))+
+  theme_bw()
+ggsave("Model10_variables.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+#Model against observed
+volume_both2 <- data.frame(cbind(data2$TOTAL_VOLUME, model10$fitted.values))
+colnames(volume_both2) <- c("volume_original", "volume_model")
+head(volume_both2)
+
+ggplot(volume_both2, aes(x = volume_original, y = volume_model))+
+  geom_point(color = "red")+
+  geom_smooth(method=lm)+
+  xlab(expression("Original volume (m)"^3))+
+  ylab(expression("Modelled volume (m)"^3))+
+  ggtitle(expression("Measured against the modelled volume"))+
+  theme_bw()
+ggsave("Model10_volumes.png", dpi = 400, width = 20, height = 15, units = "cm")
+````
+
+
+````{r}
+model9 <- lm(TOTAL_VOLUME ~ BA.D2, data = data2)
+summary(model9)
+ggplot(model9)+
+  geom_point(aes(x=model9$fitted.values, y = model9$residuals), color = "black", pch = 21, fill = "steelblue", cex = 1.5)+
+  geom_hline(yintercept = 0, lwd = 0.7)+
+  scale_y_continuous(name = "Residuals",
+                     breaks = seq(-120, 60, 20),
+                     limits = c(-120, 60))+
+  scale_x_continuous(name = "Fitted values")+
+  ggtitle("Residual plot")+
+  theme_test()
+ggsave("Model9.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+model9$coefficients
+#Predictors against dependent
+ggplot(data2, aes(x = BA.D2, y = TOTAL_VOLUME))+
+  geom_point(color = "red")+
+  geom_smooth(method=lm)+
+  xlab("Basal area x Diameter")+
+  ylab(expression("Total volume (m)"^3))+
+  ggtitle(expression("Volume against predictor variable"))+
+  theme_bw()
+ggsave("Model9_variables.png", dpi = 400, width = 20, height = 15, units = "cm")
+#Model against observed
+volume_both <- data.frame(cbind(data2$TOTAL_VOLUME, model9$fitted.values))
+colnames(volume_both) <- c("volume_original", "volume_model")
+head(volume_both)
+
+ggplot(volume_both, aes(x = volume_original, y = volume_model))+
+  geom_point(color = "black")+
+  geom_smooth(method=lm)+
+  xlab(expression("Original volume (m)"^3))+
+  ylab(expression("Modelled volume (m)"^3))+
+  ggtitle(expression("Measured against the modelled volume"))+
+  theme_bw()
+ggsave("Model9_volumes.png", dpi = 400, width = 20, height = 15, units = "cm")
+````
+
+
+
+
+### Validation
+
+### Validation data
+````{r}
+#Validation of data
+validate_data <-  read.csv( "C:/Users/lawre/Desktop/Uni Eastern Finland/Introduction to R/Intro to R/Methodology exercise/validating_data.csv",
+                            header = T, dec = ".")
+````
+
+### Transforming validation data
+
+````{r}
+BA2 <- validate_data$BA^2
+D2 <- validate_data$D^2
+H2 <- validate_data$H^2
+validate_data2 <- data.frame(cbind(validate_data, BA2, D2, H2))
+BA.D2 <- validate_data2$BA*(validate_data2$D2)
+BA.H2 <- validate_data2$BA*(validate_data2$H2)
+validate_data2 <- data.frame(cbind(validate_data2,BA.D2, BA.H2))
+colnames(validate_data2)[12] <- "TOTAL_VOLUME"
+````
+
+
+### Summary statistics of validated data
+
+````{r}
+print(summary(validate_data[-3, -11]))
+for (items in names(validate_data[-3, -11])){
+  std_v <- sd(validate_data[-3, -11][[items]])
+  len_v <- length(validate_data[-3, -11][[items]])
+  item_v <- list(std_v)
+  item_v2 <- list(len_v)
+  names(item_v) <- names(validate_data[-3, -11][items])
+  sentence_v <- paste("std of", names(validate_data[-3, -11][items]), "is", std_v)
+  sentence_v2 <- paste("Length of", names(validate_data[-3, -11][items]), "is", len_v)
+  print(sentence_v)
+  print(sentence_v2)
+}
+````
+
+
+````{r}
+#Boxplots
+ggplot(validate_data, aes(x = as.factor(FOREST_TYPE), y = VOLUME))+
+  geom_boxplot(color = "black", fill = c(2:8), alpha = 0.7, outlier.shape = 20, outlier.color = "red", outlier.size = 3)+
+  scale_y_continuous(name = expression("Volume (m)"^3),
+                     breaks = seq(0, 600, 100),
+                     limits = c(0, 600))+
+  scale_x_discrete(name = "Forest types",
+                   labels = c("Very fertile", "Fertile","Semi Fertile", "Moderate","Less Fertile", "Poor", "Very_poor"))+
+  ggtitle("Boxplot of Forest types")+
+  theme_bw()
+ggsave("Boxplot of Forest types_Validated data.png", dpi = 400, width = 20, height = 15, units = "cm")
+````
+
+
+`````{r}
+ggplot(validate_data, aes(x = as.factor(SP_GROUP), y = VOLUME))+
+  geom_boxplot(color = "black", fill = c(2:4), alpha = 0.7, outlier.shape = 20, outlier.color = "red", outlier.size = 3)+
+  scale_y_continuous(name = expression("Volume (m)"^3),
+                     breaks = seq(0, 600, 100),
+                     limits = c(0, 600))+
+  scale_x_discrete(name = "Dominant species",
+                   labels = c("Pine", "Spruce", "Birch and others"))+
+  ggtitle("Boxplot of Dominant species")+
+  theme_bw()
+ggsave("Boxplot of dom species_validated data.png", dpi = 400, width = 20, height = 15, units = "cm")
+```
+
+
+````{r}
+#Histogram distribution
+ggplot(validate_data)+
+  geom_histogram(aes(x=VOLUME, y =..density..),
+                 bins = 30, col = "white", fill = "green")+
+  scale_y_continuous(name = "Density")+
+  stat_function(fun = dnorm, args = list(mean = mean(validate_data$VOLUME), sd = sd(validate_data$VOLUME)), cex=1, color = "steelblue")+
+  ggtitle("Histogram distribution of the total volume")+
+  xlab(expression("Volume (m)"^3))+
+  theme_bw()
+ggsave("Histogram2.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+ggplot(validate_data)+
+  geom_histogram(aes(x=VOLUME, y =..density..),
+                 bins = 30, col = "white", fill = "green")+
+  scale_y_continuous(name = "Density")+
+  stat_function(fun = dnorm, args = list(mean = mean(validate_data$VOLUME), sd = sd(validate_data$VOLUME)), cex=1, color = "steelblue")+
+  ggtitle("Histogram distribution of the total volume by species")+
+  xlab(expression("Volume (m)"^3))+
+  facet_wrap(~factor(SP_GROUP), labeller = as_labeller(c("1" = "Pine",
+                                                         "2" = "Spruce",
+                                                         "4" = "Birch and others")))+
+  scale_fill_manual(values = c("blue", "red", "green"))+
+  theme_clean()+
+  theme(strip.background =element_rect(fill="red"))+
+  theme(strip.text = element_text(colour = 'white'))
+ggsave("Histogram_validated.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+```
+
+
+````{r}
+validate_data <-  read.csv( "C:/Users/lawre/Desktop/Uni Eastern Finland/Introduction to R/Intro to R/Methodology exercise/validating_data.csv",
+                            header = T, dec = ".")
+validate_data <- validate_data[-c(3, 10, 11)]
+data_summary2 <- data.frame(apply(validate_data, 2, summary))
+data_sd2 <- data.frame(apply(validate_data, 2, sd))
+data_summary2 <- rbind(data_summary2, t(data_sd2))
+colnames(data_summary2) <- c("Latitude", "Longitude","Age", "Annual precipitation", "Basal area", "Diameter", "Height", "Number of plots", "Total volume")
+data_summary2 <- data_summary2[-c(2,3,5),]
+rownames(data_summary2) <- c("Minimum", "Mean", "Maximum", "Std")
+write.csv(data_summary2, "C:/Users/lawre/Desktop/Uni Eastern Finland/Introduction to R/Intro to R/Methodology exercise/Summary of validation.csv", col.names = T, na = "NA")
+````
+
+
+
+````{r}
+#Prediction one
+rmse <- function(error){sqrt(mean(error^2))}
+bias <- function(error){mean(error)}
+
+predic_1 <- predict(model11, newdata = validate_data2)
+comb_1 <- data.frame(cbind(validate_data2$TOTAL_VOLUME, predic_1))
+
+ggplot(validate_data2, aes(x=validate_data2$TOTAL_VOLUME, y = predic_1))+
+  geom_point(pch = 21, color = "black", fill = "steel blue", cex = 1.5)+
+  geom_smooth(method = lm)+
+  scale_y_continuous(name = expression("Modeled volume (m)"^3),
+                    breaks = seq(0, 600, 100),
+                    limits = c(0, 600))+
+  scale_x_continuous(name = expression("Original volume (m)"^3),
+                     breaks = seq(0, 600, 100),
+                     limits = c(0, 600))+
+  ggtitle("Modelled vs Original volume of the validated data")+
+  theme_test()
+ggsave("Model11_predictedvolumes.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+head(comb_1)
+rmse(comb_1$V1-comb_1$predic_1)
+bias(comb_1$V1-comb_1$predic_1)
+
+
+predic_2 <- predict(model10, newdata = validate_data2)
+comb_2 <- data.frame(cbind(validate_data2$TOTAL_VOLUME, predic_2))
+
+ggplot(validate_data2, aes(x=validate_data2$TOTAL_VOLUME, y = predic_2))+
+  geom_point(pch = 21, color = "black", fill = "red", cex = 1.5)+
+  geom_smooth(method = lm)+
+  scale_y_continuous(name = expression("Modeled volume (m)"^3),
+                    breaks = seq(0, 600, 100),
+                    limits = c(0, 600))+
+  scale_x_continuous(name = expression("Original volume (m)"^3),
+                     breaks = seq(0, 600, 100),
+                     limits = c(0, 600))+
+  ggtitle("Modelled vs Original volume of the validated data")+
+  theme_test()
+ggsave("Model10_predictedvolumes.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+head(comb_2)
+rmse(comb_2$V1-comb_2$predic_2)
+bias(comb_2$V1-comb_2$predic_2)
+
+
+predic_3 <- predict(model9, newdata = validate_data2)
+comb_3 <- data.frame(cbind(validate_data2$TOTAL_VOLUME, predic_3))
+
+ggplot(validate_data2, aes(x=validate_data2$TOTAL_VOLUME, y = predic_3))+
+  geom_point(pch = 21, color = "black", fill = "blue", cex = 1.5)+
+  geom_smooth(method = lm)+
+  scale_y_continuous(name = expression("Modeled volume (m)"^3),
+                    breaks = seq(0, 600, 100),
+                    limits = c(0, 600))+
+  scale_x_continuous(name = expression("Original volume (m)"^3),
+                     breaks = seq(0, 600, 100),
+                     limits = c(0, 600))+
+  ggtitle("Modelled vs Original volume of the validated data")+
+  theme_test()
+ggsave("Model9_predictedvolumes.png", dpi = 400, width = 20, height = 15, units = "cm")
+
+head(comb_3)
+rmse(comb_3$V1-comb_3$predic_3)
+bias(comb_3$V1-comb_3$predic_3)
+````
